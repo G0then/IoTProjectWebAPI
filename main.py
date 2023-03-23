@@ -834,6 +834,8 @@ def get_device_sensor_statistics_data(device_pid, sensor_pid):
 
         #Média dos valores do array
         average_reading = np.mean(filtered_readings)
+        if np.isnan(average_reading):
+            average_reading = 0
 
         #Máximo dos valores do array
         max_reading = np.max(filtered_readings, initial=0)
@@ -860,6 +862,8 @@ def get_device_statistics_data(device_pid):
 
         #Média dos valores do array
         average_reading = np.mean(filtered_readings)
+        if np.isnan(average_reading):
+            average_reading = 0
 
         #Máximo dos valores do array
         max_reading = np.max(filtered_readings, initial=0)
