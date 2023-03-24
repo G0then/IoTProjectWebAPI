@@ -27,7 +27,12 @@ def not_found(error):
 @app.route('/devices', methods=['GET'])
 def get_devices():
     try:
-        devices = db.devices.find()
+        filter = request.args.get('filter', default=None)
+
+        if filter == "" or filter is None:
+            devices = db.devices.find()
+        else:
+            devices = db.devices.find({"$or": [{"pid": {"$regex": filter}}, {"name": {"$regex": filter}}]})
         return parse_json(devices)
     except:
         return [], 404
@@ -54,8 +59,20 @@ def get_device_sensors(device_pid):
 @app.route('/sensors', methods=['GET'])
 def get_sensors():
     try:
-        sensors = db.devices.find({}, {"_id": 0, "pid": 1, "sensors": 1})
-        return parse_json(sensors)
+        filter = request.args.get('filter', default=None)
+
+        if filter == "" or filter is None:
+            sensorsDevice = parse_json(db.devices.find({}, {"_id": 0, "pid": 1, "sensors": 1}))
+        else:
+            sensorsDevice = parse_json(db.devices.find({"$or": [{"pid": {"$regex": filter}}, {"sensors.pid": {"$regex": filter}}, {"sensors.name": {"$regex": filter}}]}, {"_id": 0, "pid": 1, "sensors": 1}))
+
+            sensors = []
+            for device in sensorsDevice:
+                if filter in device.pid:
+                    sensors.append(sensors)
+
+
+        return sensorsDevice
     except:
         return [], 404
 
@@ -126,7 +143,13 @@ def get_latest_readings():
 @app.route('/users', methods=['GET'])
 def get_users():
     try:
-        users = db.users.find()
+        filter = request.args.get('filter', default=None)
+
+        if filter == "" or filter is None:
+            users = db.users.find()
+        else:
+            users = db.users.find({"$or": [{"username": {"$regex": filter}}, {"name": {"$regex": filter}}, {"email": {"$regex": filter}}]})
+
         return parse_json(users)
     except:
         return [], 404
@@ -303,9 +326,14 @@ def register_device():
             'sensors': request.json['sensors']
         }
 
-        db.devices.insert_one(parse_json(new_device))
+        deviceAlreadyExists = db.devices.find_one({"pid": request.json['pid']})
+        print(deviceAlreadyExists)
 
-        return jsonify(new_device), 200
+        if deviceAlreadyExists is None:
+            db.devices.insert_one(parse_json(new_device))
+            return jsonify(new_device), 200
+        else:
+            return jsonify({"message": "Device Pid already in use"}), 400
 
     except:
         return {}, 404
@@ -357,7 +385,14 @@ def register_user():
             'devices': request.json.get('devices', [])
         }
 
-        db.users.insert_one(parse_json(new_user))
+        usernameAlreadyExists = db.users.find_one({"username": request.json['username']})
+
+        if usernameAlreadyExists is None:
+            db.users.insert_one(parse_json(new_user))
+
+            return jsonify(new_user), 200
+        else:
+            return jsonify({"message": "Username already in use"}), 400
 
         return jsonify(new_user), 200
 
@@ -432,7 +467,7 @@ def get_device_sensor_latest_reading(device_pid, sensor_pid):
 @app.route('/alerts', methods=['POST'])
 def add_alert():
     if not request.json or 'device_pid' not in request.json or 'sensor_pid' not in request.json or 'value' not in request.json or 'type' not in request.json \
-            or 'description' not in request.json:
+            or 'message' not in request.json:
         abort(400)  # 400 Bad Request
 
     try:
@@ -441,7 +476,7 @@ def add_alert():
             'sensor_pid': request.json['sensor_pid'],
             'value': request.json['value'],
             'type': request.json['type'],
-            'description': request.json['description'],
+            'message': request.json['message'],
             'cleared': request.json.get('cleared', 0),
             'timestamp': request.json.get('timestamp', datetime.datetime.utcnow())
         }
@@ -456,13 +491,13 @@ def add_alert():
 #Add new log
 @app.route('/logs', methods=['POST'])
 def add_log():
-    if not request.json or 'device_pid' not in request.json or 'description' not in request.json:
+    if not request.json or 'device_pid' not in request.json or 'message' not in request.json:
         abort(400)  # 400 Bad Request
 
     try:
         new_log = {
             'device_pid': request.json['device_pid'],
-            'description': request.json['description'],
+            'message': request.json['message'],
             'timestamp': request.json.get('timestamp', datetime.datetime.utcnow())
         }
 
