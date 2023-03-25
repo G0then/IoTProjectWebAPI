@@ -6,6 +6,7 @@ from pymongo import MongoClient
 from utils.parse_json import parse_json
 import numpy as np
 import math
+import copy
 
 app = Flask(__name__)
 
@@ -63,16 +64,21 @@ def get_sensors():
 
         if filter == "" or filter is None:
             sensorsDevice = parse_json(db.devices.find({}, {"_id": 0, "pid": 1, "sensors": 1}))
+            return sensorsDevice
         else:
-            sensorsDevice = parse_json(db.devices.find({"$or": [{"pid": {"$regex": filter}}, {"sensors.pid": {"$regex": filter}}, {"sensors.name": {"$regex": filter}}]}, {"_id": 0, "pid": 1, "sensors": 1}))
+            sensorsDevice = parse_json(db.devices.find({"$or": [{"sensors.pid": {"$regex": filter}}, {"sensors.name": {"$regex": filter}}]}, {"_id": 0, "pid": 1, "sensors": 1}))
 
-            sensors = []
-            for device in sensorsDevice:
-                if filter in device.pid:
-                    sensors.append(sensors)
+            sensorsDeviceFiltered = copy.deepcopy(sensorsDevice)
+            for index, device in enumerate(sensorsDevice):
+                for sensor in device["sensors"]:
+                    if (filter not in sensor["pid"]) and (filter not in sensor["name"]):
+                    #    indexToRemove = sensorsDeviceFiltered[index]["sensors"].index(sensor)
+                    #    sensorsDeviceFiltered[index]["sensors"].remove(sensor)
+                        #Or
+                        sensorsDeviceFiltered[index]["sensors"].remove(sensor)
 
 
-        return sensorsDevice
+            return sensorsDeviceFiltered
     except:
         return [], 404
 
