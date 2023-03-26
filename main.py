@@ -47,6 +47,31 @@ def get_device(device_pid):
     except:
         return {}, 404
 
+#Update an specific device by pid
+@app.route('/devices/<string:device_pid>', methods=['PUT'])
+def update_device(device_pid):
+    if not request.json:
+        abort(400)  # 400 Bad Request
+
+    try:
+        device = parse_json(db.devices.find_one({"pid": device_pid}))
+
+        new_device_info = {
+            "pid": request.json.get('pid', device['pid']),
+            "name": request.json.get('name', device['name']),
+            "description": request.json.get('description', device['description']),
+            "location": request.json.get('location', device['location']),
+            "status": request.json.get('status', device['status']),
+            "sensors": request.json.get('sensors', device['sensors'])
+        }
+
+        db.devices.update_one({"pid": device_pid}, {"$set": new_device_info})
+
+        return parse_json(device), 200
+
+    except:
+        return {}, 404
+
 #Get al sensors from specific device by pid
 @app.route('/devices/<string:device_pid>/sensors', methods=['GET'])
 def get_device_sensors(device_pid):
@@ -55,6 +80,32 @@ def get_device_sensors(device_pid):
         return parse_json(device_sensors), 200
     except:
         return [], 404
+
+#Update an specific device by pid
+@app.route('/devices/<string:device_pid>/sensors/register', methods=['PUT'])
+def register_sensor_device(device_pid):
+    if not request.json or 'pid' not in request.json or 'name' not in request.json or 'description' not in request.json or 'status' not in request.json \
+            or 'calibrate' not in request.json or 'config' not in request.json or 'unit' not in request.json or 'unit_name' not in request.json:
+        abort(400)  # 400 Bad Request
+
+    try:
+        new_sensor = {
+            'pid': request.json['pid'],
+            'name': request.json['name'],
+            'description': request.json['description'],
+            'calibrate': request.json['calibrate'],
+            'status': request.json['status'],
+            'config': request.json['config'],
+            'unit': request.json['unit'],
+            'unit_name': request.json['unit_name'],
+        }
+
+        db.devices.update_one({"pid": device_pid}, {"$push": {"sensors": new_sensor}})
+
+        return parse_json(new_sensor), 200
+
+    except:
+        return {}, 404
 
 #Get all sensors
 @app.route('/sensors', methods=['GET'])
@@ -333,7 +384,6 @@ def register_device():
         }
 
         deviceAlreadyExists = db.devices.find_one({"pid": request.json['pid']})
-        print(deviceAlreadyExists)
 
         if deviceAlreadyExists is None:
             db.devices.insert_one(parse_json(new_device))
