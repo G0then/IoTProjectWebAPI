@@ -406,6 +406,26 @@ def delete_device(device_pid):
     except:
         return {}, 404
 
+#Delete sensor from device by pid
+@app.route('/devices/<string:device_pid>/sensors/<string:sensor_pid>', methods=['DELETE'])
+def delete_sensor(device_pid, sensor_pid):
+    try:
+        device = parse_json(db.devices.find_one({"pid": device_pid}))
+
+        device_to_remove = [x for x in device["sensors"] if x["pid"] == sensor_pid]
+
+        print(device_to_remove)
+
+        db.devices.update_one(
+            {"pid": device_pid},
+            { "$pull": {'sensors': {"pid": sensor_pid}}}
+        )
+
+        return parse_json(device_to_remove[0]), 200
+
+    except:
+        return {}, 404
+
 #Add reading
 @app.route('/readings', methods=['POST'])
 def add_reading():
