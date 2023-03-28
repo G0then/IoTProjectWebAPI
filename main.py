@@ -72,6 +72,36 @@ def update_device(device_pid):
     except:
         return {}, 404
 
+#Update an specific sensor from device by pid
+@app.route('/devices/<string:device_pid>/sensors/<string:sensor_pid>', methods=['PUT'])
+def update_sensor(device_pid, sensor_pid):
+    if not request.json:
+        abort(400)  # 400 Bad Request
+
+    try:
+        device = parse_json(db.devices.find_one({"pid": device_pid}))
+        sensor = [sensor for sensor in device["sensors"] if sensor["pid"] == sensor_pid]
+
+        index_position = device["sensors"].index(sensor[0])
+
+        new_sensor_info = {
+            "pid": request.json.get('pid', device["sensors"][index_position]['pid']),
+            "name": request.json.get('name', device["sensors"][index_position]['name']),
+            "description": request.json.get('description', device["sensors"][index_position]['description']),
+            "status": request.json.get('status', device["sensors"][index_position]['status']),
+            "calibrate": request.json.get('calibrate', device["sensors"][index_position]['calibrate']),
+            "config": request.json.get('config', device["sensors"][index_position]['config']),
+            "unit": request.json.get('unit', device["sensors"][index_position]['unit']),
+            "unit_name": request.json.get('unit_name', device["sensors"][index_position]['unit_name']),
+        }
+
+        db.devices.update_one({"pid": device_pid}, {"$set": {"sensors."+str(index_position): new_sensor_info}})
+
+        return parse_json(new_sensor_info), 200
+
+    except:
+        return {}, 404
+
 #Get al sensors from specific device by pid
 @app.route('/devices/<string:device_pid>/sensors', methods=['GET'])
 def get_device_sensors(device_pid):
@@ -413,8 +443,6 @@ def delete_sensor(device_pid, sensor_pid):
         device = parse_json(db.devices.find_one({"pid": device_pid}))
 
         device_to_remove = [x for x in device["sensors"] if x["pid"] == sensor_pid]
-
-        print(device_to_remove)
 
         db.devices.update_one(
             {"pid": device_pid},
