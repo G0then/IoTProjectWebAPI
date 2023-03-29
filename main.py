@@ -1152,6 +1152,31 @@ def sensor_count_documents(device_pid, sensor_pid):
     except:
         return {}, 404
 
+#Get all readings data to use in charts
+#Basically the readings are organized in arrays depending the sensor_pid
+@app.route('/devices/<string:device_pid>/data/chart', methods=['GET'])
+def get_device_chart_data(device_pid):
+    try:
+        readings = parse_json(db.sensors_readings.find({"device_pid": device_pid}))
+
+        print(readings)
+
+        list_readings = {"data" : {}}
+        for reading in readings:
+            print("reading: ", reading)
+            if reading["sensor_pid"] in list_readings["data"]:
+                print("Entrei no if")
+                list_readings["data"][reading["sensor_pid"]].append(reading)
+            else:
+                print("Não entrei no if")
+                list_readings["data"][reading["sensor_pid"]] = [reading]
+
+        print(list_readings)
+
+        return parse_json(list_readings), 200
+    except:
+        return [], 404
+
 
 if __name__ == '__main__':
     app.debug = True
