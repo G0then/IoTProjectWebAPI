@@ -1163,15 +1163,10 @@ def get_device_chart_data(device_pid):
 
         list_readings = {"data" : {}}
         for reading in readings:
-            print("reading: ", reading)
             if reading["sensor_pid"] in list_readings["data"]:
-                print("Entrei no if")
                 list_readings["data"][reading["sensor_pid"]].append(reading)
             else:
-                print("Não entrei no if")
                 list_readings["data"][reading["sensor_pid"]] = [reading]
-
-        print(list_readings)
 
         return parse_json(list_readings), 200
     except:
