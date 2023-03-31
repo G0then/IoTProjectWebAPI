@@ -197,15 +197,31 @@ def get_all_readings():
     try:
         limit = request.args.get('limit', default=None, type=int)
         sort = request.args.get('sort', default=None, type=int)
+        startDate = request.args.get('startDate', default=None, type=str)
+        stopDate = request.args.get('stopDate', default=None, type=str)
+
+        #Se existir o filtro de startDate e estiver corretamente formatado, converte a string para data
+        #Senão devolve os registos que começam em 1900-01-0-1
+        try:
+            startDate = datetime.datetime.fromisoformat(startDate)
+        except:
+            startDate = datetime.datetime.fromisoformat("1900-01-01")
+
+        # Se existir o filtro de stopDate e estiver corretamente formatado, converte a string para data
+        # Senão devolve os registos que terminam na data e hora atual
+        try:
+            stopDate = datetime.datetime.fromisoformat(stopDate)
+        except:
+            stopDate = datetime.datetime.now()
 
         if limit is not None and (sort==1 or sort==-1):
-            readings = db.sensors_readings.find().sort([("timestamp", sort)]).limit(limit)
+            readings = db.sensors_readings.find({"timestamp":{"$gte": startDate, "$lte": stopDate}}).sort([("timestamp", sort)]).limit(limit)
         elif limit is not None and sort is None:
-            readings = db.sensors_readings.find().limit(limit)
+            readings = db.sensors_readings.find({"timestamp":{"$gte": startDate, "$lte": stopDate}}).limit(limit)
         elif limit is None and (sort==1 or sort==-1):
-            readings = db.sensors_readings.find().sort([("timestamp", sort)])
+            readings = db.sensors_readings.find({"timestamp":{"$gte": startDate, "$lte": stopDate}}).sort([("timestamp", sort)])
         else:
-            readings = db.sensors_readings.find()
+            readings = db.sensors_readings.find({"timestamp":{"$gte": startDate, "$lte": stopDate}})
 
         return parse_json(readings), 200
     except:
