@@ -1168,7 +1168,7 @@ def sensor_count_documents(device_pid, sensor_pid):
     except:
         return {}, 404
 
-#Get all readings data to use in charts
+#Get all device readings data to use in charts
 #Basically the readings are organized in arrays depending the sensor_pid
 @app.route('/devices/<string:device_pid>/data/chart', methods=['GET'])
 def get_device_chart_data(device_pid):
@@ -1205,8 +1205,6 @@ def get_device_chart_data(device_pid):
 
         readings = parse_json(readings)
 
-        print(readings)
-
         list_readings = {"data" : {}}
         for reading in readings:
             if reading["sensor_pid"] in list_readings["data"]:
@@ -1218,6 +1216,49 @@ def get_device_chart_data(device_pid):
     except:
         return [], 404
 
+
+#Get all device sensors readings data to use in charts
+#Basically the readings are organized in arrays depending the sensor_pid
+@app.route('/devices/<string:device_pid>/sensors/<string:sensor_pid>/data/chart', methods=['GET'])
+def get_sensor_chart_data(device_pid, sensor_pid):
+    try:
+        limit = request.args.get('limit', default=None, type=int)
+        sort = request.args.get('sort', default=None, type=int)
+        startDate = request.args.get('startDate', default=None, type=str)
+        stopDate = request.args.get('stopDate', default=None, type=str)
+
+        # Se existir o filtro de startDate e estiver corretamente formatado, converte a string para data
+        # Senão devolve os registos que começam em 1900-01-0-1
+        try:
+            startDate = datetime.datetime.fromisoformat(startDate)
+        except:
+            startDate = datetime.datetime.fromisoformat("1900-01-01")
+
+        # Se existir o filtro de stopDate e estiver corretamente formatado, converte a string para data
+        # Senão devolve os registos que terminam na data e hora atual
+        try:
+            stopDate = datetime.datetime.fromisoformat(stopDate)
+        except:
+            stopDate = datetime.datetime.now()
+
+        if limit is not None and (sort == 1 or sort == -1):
+            readings = db.sensors_readings.find({"device_pid": device_pid, "sensor_pid": sensor_pid, "timestamp": {"$gte": startDate, "$lte": stopDate}}).sort(
+                [("timestamp", sort)]).limit(limit)
+        elif limit is not None and sort is None:
+            readings = db.sensors_readings.find({"device_pid": device_pid, "sensor_pid": sensor_pid, "timestamp": {"$gte": startDate, "$lte": stopDate}}).limit(limit)
+        elif limit is None and (sort == 1 or sort == -1):
+            readings = db.sensors_readings.find({"device_pid": device_pid, "sensor_pid": sensor_pid, "timestamp": {"$gte": startDate, "$lte": stopDate}}).sort(
+                [("timestamp", sort)])
+        else:
+            readings = db.sensors_readings.find({"device_pid": device_pid, "sensor_pid": sensor_pid, "timestamp": {"$gte": startDate, "$lte": stopDate}})
+
+        readings = parse_json(readings)
+
+        list_readings = {"data" : {sensor_pid: readings}}
+
+        return parse_json(list_readings), 200
+    except:
+        return [], 404
 
 if __name__ == '__main__':
     app.debug = True
