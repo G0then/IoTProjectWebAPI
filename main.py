@@ -270,6 +270,38 @@ def get_user(username):
     except:
         return {}, 404
 
+#Get number of device (and number of sensors), alerts, logs... documents by user
+@app.route('/users/<string:username>/count_documents', methods=['GET'])
+def user_count_documents(username):
+    try:
+        user = parse_json(db.users.find_one({"username": username}))
+        #Num Devices of User (De devices are being searched/obtained by PID that is present in user devices list)
+        devices = parse_json(db.devices.find({"pid": {"$in": user["devices"]}}))
+        num_devices = len(devices)
+
+        #Num Sensors of User
+        sensors = []
+        for device in devices:
+            for sensor in device["sensors"]:
+                if sensor["pid"] not in sensors:
+                    sensors.append(sensor["pid"])
+        num_sensors = len(sensors)
+
+        #Num Readings of User
+        num_readings = db.sensors_readings.count_documents({})
+
+        #Num Logs of User
+        num_logs = db.logs.count_documents({})
+
+        #Num Alerts of User
+        num_alerts = db.sensor_alerts.count_documents({})
+        num_alerts_cleared = db.sensor_alerts.count_documents({"cleared": 1})
+
+        return jsonify({"devices": num_devices, "sensors": num_sensors, "readings": num_readings, "logs": num_logs, "alerts": {"total": num_alerts, "total_cleared": num_alerts_cleared}}), 200
+    except:
+        return {}, 404
+
+
 #Get all users associated with a specific device
 @app.route('/devices/<string:device_pid>/users/', methods=['GET'])
 def get_device_users(device_pid):
@@ -283,11 +315,66 @@ def get_device_users(device_pid):
 @app.route('/users/<string:username>/devices', methods=['GET'])
 def get_user_devices(username):
     try:
-        user_devices = parse_json(db.users.find_one({"username": username}, {"_id": 0, "devices": 1}))
-        if (user_devices is not None):
-            return user_devices
-        else:
-            return [], 404
+        user = parse_json(db.users.find_one({"username": username}))
+        user_devices = parse_json(db.devices.find({"pid": {"$in": user["devices"]}}))
+
+        return user_devices
+
+    except:
+        return [], 404
+
+
+# Get all user sensors
+@app.route('/users/<string:username>/sensors', methods=['GET'])
+def get_user_sensors(username):
+    try:
+        user = parse_json(db.users.find_one({"username": username}))
+        user_devices = parse_json(db.devices.find({"pid": {"$in": user["devices"]}}))
+
+        user_sensors = []
+        for device in user_devices:
+            for sensor in device["sensors"]:
+                if sensor not in user_sensors:
+                    user_sensors.append(sensor)
+
+        return user_sensors
+
+    except:
+        return [], 404
+
+# Get all user readings
+@app.route('/users/<string:username>/readings', methods=['GET'])
+def get_user_readings(username):
+    try:
+        user = parse_json(db.users.find_one({"username": username}))
+        user_readings = parse_json(db.sensors_readings.find({"device_pid": {"$in": user["devices"]}}))
+
+        return user_readings
+
+    except:
+        return [], 404
+
+# Get all user logs
+@app.route('/users/<string:username>/logs', methods=['GET'])
+def get_user_logs(username):
+    try:
+        user = parse_json(db.users.find_one({"username": username}))
+        user_logs = parse_json(db.logs.find({"device_pid": {"$in": user["devices"]}}))
+
+        return user_logs
+
+    except:
+        return [], 404
+
+# Get all user alerts
+@app.route('/users/<string:username>/alerts', methods=['GET'])
+def get_user_alerts(username):
+    try:
+        user = parse_json(db.users.find_one({"username": username}))
+        user_alerts = parse_json(db.sensor_alerts.find({"device_pid": {"$in": user["devices"]}}))
+
+        return user_alerts
+
     except:
         return [], 404
 
