@@ -95,6 +95,14 @@ def update_sensor(device_pid, sensor_pid):
             "unit_name": request.json.get('unit_name', device["sensors"][index_position]['unit_name']),
         }
 
+        #If minAlertValue exists in request, add it to json object
+        if 'minAlertValue' in request.json:
+            new_sensor_info["minAlertValue"] = request.json['minAlertValue']
+
+        # If maxAlertValue exists in request, add it to json object
+        if 'maxAlertValue' in request.json:
+            new_sensor_info["maxAlertValue"] = request.json['maxAlertValue']
+
         db.devices.update_one({"pid": device_pid}, {"$set": {"sensors."+str(index_position): new_sensor_info}})
 
         return parse_json(new_sensor_info), 200
