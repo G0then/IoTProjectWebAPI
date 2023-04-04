@@ -564,6 +564,7 @@ def add_reading():
         abort(400)  # 400 Bad Request
 
     try:
+        #Cria o objeto com a nova leitura
         new_reading = {
             'device_pid': request.json['device_pid'],
             'sensor_pid': request.json['sensor_pid'],
@@ -571,7 +572,43 @@ def add_reading():
             'timestamp': request.json.get('timestamp', datetime.datetime.utcnow())
         }
 
+        #Introduz a nova leitura na collection
         db.sensors_readings.insert_one(parse_json(new_reading))
+
+        #Obtém o device e o sensor
+        device = parse_json(db.devices.find_one({"pid": request.json['device_pid']}))
+        sensor = [sensor for sensor in device["sensors"] if sensor["pid"] == request.json['sensor_pid']][0]
+
+        shouldCreateAlert = False
+        #Verifica se o sensor têm alguns valores limites e se tiver verifica se o valor da leitura está dentro dos limites
+        if sensor.get('maxAlertValue') is not None and sensor.get('minAlertValue') is not None:
+            if request.json['value'] > sensor.get('maxAlertValue') or request.json['value'] < sensor.get('minAlertValue'):
+                #Cria alerta
+                shouldCreateAlert = True
+        elif sensor.get('maxAlertValue') is None and sensor.get('minAlertValue') is not None:
+            if request.json['value'] < sensor.get('minAlertValue'):
+                #Cria alerta
+                shouldCreateAlert = True
+        elif sensor.get('maxAlertValue') is not None and sensor.get('minAlertValue') is None:
+            if request.json['value'] > sensor.get('maxAlertValue'):
+                # Cria alerta
+                shouldCreateAlert = True
+
+
+        #Quando o valor da leitura não está dentro dos limites, é criado um alerta
+        if shouldCreateAlert == True:
+            # Cria o objeto com a novo alerta
+            new_alert = {
+                'device_pid': request.json['device_pid'],
+                'sensor_pid': request.json['sensor_pid'],
+                'value': request.json['value'],
+                'type': "warning",
+                'message': "Value isnt inside limits",
+                'cleared': 0,
+                'timestamp': request.json.get('timestamp', datetime.datetime.utcnow())
+            }
+            db.sensor_alerts.insert_one(parse_json(new_alert))
+
 
         return jsonify(new_reading), 200
 
@@ -1352,7 +1389,8 @@ if __name__ == '__main__':
 
     # If you have the debugger disabled or trust the users on your network,
     # you can make the server publicly available simply by adding --host=0.0.0.0
-    host = os.environ.get('IP', '127.0.0.1')
+    # host = os.environ.get('IP', '127.0.0.1')
+    host = os.environ.get('IP', '192.168.1.12')
 
     port = int(os.environ.get('PORT', 8080))
 
