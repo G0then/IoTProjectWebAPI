@@ -620,7 +620,16 @@ def add_reading():
                 'cleared': 0,
                 'timestamp': request.json.get('timestamp', datetime.datetime.utcnow())
             }
-            db.sensor_alerts.insert_one(parse_json(new_alert))
+
+            db.sensor_alerts.insert_one({
+                'device_pid': request.json['device_pid'],
+                'sensor_pid': request.json['sensor_pid'],
+                'value': request.json['value'],
+                'type': "warning",
+                'message': "Value isnt inside limits",
+                'cleared': 0,
+                'timestamp': request.json.get('timestamp', datetime.datetime.utcnow())
+            })
 
 
         return jsonify(new_reading), 200
@@ -739,7 +748,15 @@ def add_alert():
             'timestamp': request.json.get('timestamp', datetime.datetime.utcnow())
         }
 
-        db.sensor_alerts.insert_one(parse_json(new_alert))
+        db.sensor_alerts.insert_one({
+            'device_pid': request.json['device_pid'],
+            'sensor_pid': request.json['sensor_pid'],
+            'value': request.json['value'],
+            'type': request.json['type'],
+            'message': request.json['message'],
+            'cleared': request.json.get('cleared', 0),
+            'timestamp': request.json.get('timestamp', datetime.datetime.utcnow())
+        })
 
         return jsonify(new_alert), 200
 
@@ -762,7 +779,19 @@ def add_log():
         if 'sensor_pid' in request.json:
             new_log["sensor_pid"] = request.json['sensor_pid']
 
-        db.logs.insert_one(parse_json(new_log))
+        if 'sensor_pid' in request.json:
+            db.logs.insert_one({
+                'device_pid': request.json['device_pid'],
+                'message': request.json['message'],
+                'timestamp': request.json.get('timestamp', datetime.datetime.utcnow()),
+                'sensor_pid': request.json['sensor_pid']
+            })
+        else:
+            db.logs.insert_one({
+                'device_pid': request.json['device_pid'],
+                'message': request.json['message'],
+                'timestamp': request.json.get('timestamp', datetime.datetime.utcnow())
+            })
 
         return jsonify(new_log), 200
 
