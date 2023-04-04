@@ -581,7 +581,12 @@ def add_reading():
         }
 
         #Introduz a nova leitura na collection
-        db.sensors_readings.insert_one(parse_json(new_reading))
+        db.sensors_readings.insert_one({
+            'device_pid': request.json['device_pid'],
+            'sensor_pid': request.json['sensor_pid'],
+            'value': request.json['value'],
+            'timestamp': request.json.get('timestamp', datetime.datetime.utcnow())
+        })
 
         #Obtém o device e o sensor
         device = parse_json(db.devices.find_one({"pid": request.json['device_pid']}))
@@ -620,7 +625,8 @@ def add_reading():
 
         return jsonify(new_reading), 200
 
-    except:
+    except Exception as e:
+        print(e)
         return {}, 404
 
 #Register user
