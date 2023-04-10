@@ -67,7 +67,7 @@ def update_device(device_pid):
 
         db.devices.update_one({"pid": device_pid}, {"$set": new_device_info})
 
-        return parse_json(device), 200
+        return parse_json(new_device_info), 200
 
     except:
         return {}, 404
@@ -119,7 +119,7 @@ def get_device_sensors(device_pid):
     except:
         return [], 404
 
-#Update an specific device by pid
+#Add an specific device by pid
 @app.route('/devices/<string:device_pid>/sensors/register', methods=['PUT'])
 def register_sensor_device(device_pid):
     if not request.json or 'pid' not in request.json or 'name' not in request.json or 'description' not in request.json or 'status' not in request.json \
@@ -580,6 +580,8 @@ def add_reading():
             'timestamp': request.json.get('timestamp', datetime.datetime.utcnow())
         }
 
+        print("New Reading: ", new_reading)
+
         #Introduz a nova leitura na collection
         db.sensors_readings.insert_one({
             'device_pid': request.json['device_pid'],
@@ -849,7 +851,7 @@ def get_sensor_max_reading(device_pid, sensor_pid):
         #Lista dos valores que estavam dentro da propriedade
         filtered_readings = [reading["value"] for reading in readings]
         #Média dos valores do array
-        max_reading = np.max(filtered_readings)
+        max_reading = np.max(filtered_readings).astype('float64')
 
         #Se não existem valores, retorna objeto vazio
         if math.isnan(max_reading):
@@ -869,7 +871,7 @@ def get_sensor_min_reading(device_pid, sensor_pid):
         #Lista dos valores que estavam dentro da propriedade
         filtered_readings = [reading["value"] for reading in readings]
         #Média dos valores do array
-        min_reading = np.min(filtered_readings)
+        min_reading = np.min(filtered_readings).astype('float64')
 
         #Se não existem valores, retorna objeto vazio
         if math.isnan(min_reading):
@@ -889,7 +891,7 @@ def get_sensor_sum_readings(device_pid, sensor_pid):
         #Lista dos valores que estavam dentro da propriedade
         filtered_readings = [reading["value"] for reading in readings]
         #Média dos valores do array
-        sum_readings = np.sum(filtered_readings)
+        sum_readings = np.sum(filtered_readings).astype('float64')
 
         #Se não existem valores, retorna objeto vazio
         if math.isnan(sum_readings):
@@ -944,7 +946,7 @@ def get_device_max_reading(device_pid):
         #Lista dos valores que estavam dentro da propriedade
         filtered_readings = [reading["value"] for reading in readings]
         #Máximo dos valores do array
-        max_reading = np.max(filtered_readings)
+        max_reading = np.max(filtered_readings).astype('float64')
 
         #Se não existem valores, retorna objeto vazio
         if math.isnan(max_reading):
@@ -964,7 +966,7 @@ def get_device_min_reading(device_pid):
         #Lista dos valores que estavam dentro da propriedade
         filtered_readings = [reading["value"] for reading in readings]
         #Mínimo dos valores do array
-        min_reading = np.min(filtered_readings)
+        min_reading = np.min(filtered_readings).astype('float64')
 
         #Se não existem valores, retorna objeto vazio
         if math.isnan(min_reading):
@@ -984,7 +986,7 @@ def get_device_sum_readings(device_pid):
         #Lista dos valores que estavam dentro da propriedade
         filtered_readings = [reading["value"] for reading in readings]
         #Soma dos valores do array
-        sum_readings = np.sum(filtered_readings)
+        sum_readings = np.sum(filtered_readings).astype('float64')
 
         #Se não existem valores, retorna objeto vazio
         if math.isnan(sum_readings):
@@ -1096,10 +1098,10 @@ def get_device_sensor_aggregate_data(device_pid, sensor_pid):
         #Lista dos valores que estavam dentro da propriedade
         filtered_readings = [reading["value"] for reading in readings]
         #Média dos valores do array
-        average_reading = np.mean(filtered_readings)
-        max_reading = np.max(filtered_readings, initial=0)
-        min_reading = np.min(filtered_readings, initial=0)
-        sum_readings = np.sum(filtered_readings)
+        average_reading = np.mean(filtered_readings).astype('float64')
+        max_reading = np.max(filtered_readings, initial=0).astype('float64')
+        min_reading = np.min(filtered_readings, initial=0).astype('float64')
+        sum_readings = np.sum(filtered_readings).astype('float64')
         count_readings = len(filtered_readings)
 
         #Se não existem valores, retorna objeto vazio
@@ -1155,22 +1157,23 @@ def get_device_sensor_statistics_data(device_pid, sensor_pid):
         filtered_readings = [reading["value"] for reading in readings]
 
         #Média dos valores do array
-        average_reading = np.mean(filtered_readings)
+        average_reading = np.mean(filtered_readings).astype('float64')
         if np.isnan(average_reading):
             average_reading = 0
 
         #Máximo dos valores do array
-        max_reading = np.max(filtered_readings, initial=0)
+        max_reading = np.max(filtered_readings, initial=0).astype('float64')
 
         #Mínimo dos valores do array
-        min_reading = np.min(filtered_readings, initial=0)
+        min_reading = np.min(filtered_readings, initial=0).astype('float64')
 
         # Soma dos valores do array
-        sum_readings = np.sum(filtered_readings)
+        sum_readings = np.sum(filtered_readings).astype('float64')
 
         # Contador dos valores do array
         count_readings = len(filtered_readings)
 
+        count_readings
         return jsonify({"average": average_reading, "max": max_reading, "min": min_reading, "sum": sum_readings, "count": count_readings}), 200
     except:
         return {}, 404
@@ -1183,24 +1186,25 @@ def get_device_statistics_data(device_pid):
         filtered_readings = [reading["value"] for reading in readings]
 
         #Média dos valores do array
-        average_reading = np.mean(filtered_readings)
+        average_reading = np.mean(filtered_readings).astype('float64')
         if np.isnan(average_reading):
             average_reading = 0
 
         #Máximo dos valores do array
-        max_reading = np.max(filtered_readings, initial=0)
+        max_reading = np.max(filtered_readings, initial=0).astype('float64')
 
         #Mínimo dos valores do array
-        min_reading = np.min(filtered_readings, initial=0)
+        min_reading = np.min(filtered_readings, initial=0).astype('float64')
 
         # Soma dos valores do array
-        sum_readings = np.sum(filtered_readings)
+        sum_readings = np.sum(filtered_readings).astype('float64')
 
         # Contador dos valores do array
         count_readings = len(filtered_readings)
 
         return jsonify({"average": average_reading, "max": max_reading, "min": min_reading, "sum": sum_readings, "count": count_readings}), 200
-    except:
+    except Exception as e:
+        print(e)
         return {}, 404
 
 #Get all alerts from device
