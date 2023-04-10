@@ -16,9 +16,11 @@ app = Flask(__name__)
 cors = CORS(app)
 app.config['CORS_HEADERS'] = 'Content-Type'
 
+#Pymongo
 client = MongoClient()
 db = client.iotPlatformDB
 
+#All time that a endpoint doesnt exist, this one will be used to inform client that the endpoint was not found
 @app.errorhandler(404)
 def not_found(error):
     return jsonify({'error': 'Not found'}), 404
@@ -580,8 +582,6 @@ def add_reading():
             'timestamp': request.json.get('timestamp', datetime.datetime.utcnow())
         }
 
-        print("New Reading: ", new_reading)
-
         #Introduz a nova leitura na collection
         db.sensors_readings.insert_one({
             'device_pid': request.json['device_pid'],
@@ -636,8 +636,7 @@ def add_reading():
 
         return jsonify(new_reading), 200
 
-    except Exception as e:
-        print(e)
+    except:
         return {}, 404
 
 #Register user
@@ -1203,9 +1202,9 @@ def get_device_statistics_data(device_pid):
         count_readings = len(filtered_readings)
 
         return jsonify({"average": average_reading, "max": max_reading, "min": min_reading, "sum": sum_readings, "count": count_readings}), 200
-    except Exception as e:
-        print(e)
+    except:
         return {}, 404
+
 
 #Get all alerts from device
 @app.route('/devices/<string:device_pid>/alerts', methods=['GET'])
