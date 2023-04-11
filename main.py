@@ -1430,6 +1430,121 @@ def get_sensor_chart_data(device_pid, sensor_pid):
     except:
         return [], 404
 
+#Get an average of device sensors readings data by hour between the start and stop date
+#To be used in charts
+@app.route('/devices/<string:device_pid>/sensors/<string:sensor_pid>/data/chart/day', methods=['GET'])
+def get_sensor_chart_data_day(device_pid, sensor_pid):
+    try:
+        startDate = request.args.get('startDate', default=None, type=str)
+        stopDate = request.args.get('stopDate', default=None, type=str)
+
+        # Se existir o filtro de startDate e estiver corretamente formatado, converte a string para data
+        # Senão devolve os registos que começam em 1900-01-0-1
+        try:
+            startDate = datetime.datetime.fromisoformat(startDate)
+        except:
+            startDate = datetime.datetime.fromisoformat("1900-01-01")
+
+        # Se existir o filtro de stopDate e estiver corretamente formatado, converte a string para data
+        # Senão devolve os registos que terminam na data e hora atual
+        try:
+            stopDate = datetime.datetime.fromisoformat(stopDate)
+        except:
+            stopDate = datetime.datetime.now()
+
+        readings = db.sensors_readings.aggregate([
+            {"$match": {"device_pid": device_pid, "sensor_pid": sensor_pid,
+                        "timestamp": {"$gte": startDate, "$lte": stopDate}}},
+            {"$group": {
+                "_id": {
+                    "$dateToString": {"format": "%Y-%m-%d %H:00:00", "date": "$timestamp"}
+                },
+                "average": {"$avg": "$value"},
+                #"hour": {"$first": {"$hour": "$timestamp"}},
+            }},
+            {"$sort": {"timestamp": 1}}
+        ])
+
+        return parse_json(readings), 200
+    except:
+        return [], 404
+
+#Get an average of device sensors readings data by day between the start and stop date
+#To be used in charts
+@app.route('/devices/<string:device_pid>/sensors/<string:sensor_pid>/data/chart/month', methods=['GET'])
+def get_sensor_chart_data_month(device_pid, sensor_pid):
+    try:
+        startDate = request.args.get('startDate', default=None, type=str)
+        stopDate = request.args.get('stopDate', default=None, type=str)
+
+        # Se existir o filtro de startDate e estiver corretamente formatado, converte a string para data
+        # Senão devolve os registos que começam em 1900-01-0-1
+        try:
+            startDate = datetime.datetime.fromisoformat(startDate)
+        except:
+            startDate = datetime.datetime.fromisoformat("1900-01-01")
+
+        # Se existir o filtro de stopDate e estiver corretamente formatado, converte a string para data
+        # Senão devolve os registos que terminam na data e hora atual
+        try:
+            stopDate = datetime.datetime.fromisoformat(stopDate)
+        except:
+            stopDate = datetime.datetime.now()
+
+        readings = db.sensors_readings.aggregate([
+          {"$match": {"device_pid": device_pid, "sensor_pid": sensor_pid, "timestamp": {"$gte": startDate, "$lte": stopDate}}},
+          { "$sort": {"timestamp": 1}},
+          { "$group": {
+            "_id": {
+                "$dateToString": { "format": "%Y-%m-%d", "date": "$timestamp" }
+            },
+            "average": { "$avg": "$value" },
+            #"day": { "$first": { "$dayOfMonth": "$timestamp" } },
+          } }
+        ])
+
+        return parse_json(readings), 200
+    except:
+        return [], 404
+
+#Get an average of device sensors readings data by month between the start and stop date
+#To be used in charts
+@app.route('/devices/<string:device_pid>/sensors/<string:sensor_pid>/data/chart/year', methods=['GET'])
+def get_sensor_chart_data_year(device_pid, sensor_pid):
+    try:
+        startDate = request.args.get('startDate', default=None, type=str)
+        stopDate = request.args.get('stopDate', default=None, type=str)
+
+        # Se existir o filtro de startDate e estiver corretamente formatado, converte a string para data
+        # Senão devolve os registos que começam em 1900-01-0-1
+        try:
+            startDate = datetime.datetime.fromisoformat(startDate)
+        except:
+            startDate = datetime.datetime.fromisoformat("1900-01-01")
+
+        # Se existir o filtro de stopDate e estiver corretamente formatado, converte a string para data
+        # Senão devolve os registos que terminam na data e hora atual
+        try:
+            stopDate = datetime.datetime.fromisoformat(stopDate)
+        except:
+            stopDate = datetime.datetime.now()
+
+        readings = db.sensors_readings.aggregate([
+          {"$match": {"device_pid": device_pid, "sensor_pid": sensor_pid, "timestamp": {"$gte": startDate, "$lte": stopDate}}},
+          { "$group": {
+            "_id": {
+                "$dateToString": { "format": "%Y-%m", "date": "$timestamp" }
+            },
+            "average": { "$avg": "$value" },
+            #"month": { "$first": { "$month": "$timestamp" } },
+          } },
+            {"$sort": {"timestamp": 1}}
+        ])
+
+        return parse_json(readings), 200
+    except:
+        return [], 404
+
 if __name__ == '__main__':
     app.debug = True
 
