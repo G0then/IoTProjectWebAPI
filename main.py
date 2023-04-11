@@ -1338,13 +1338,11 @@ def sensor_count_documents(device_pid, sensor_pid):
     except:
         return {}, 404
 
-#Get all device readings data to use in charts
-#Basically the readings are organized in arrays depending the sensor_pid
-@app.route('/devices/<string:device_pid>/data/chart', methods=['GET'])
-def get_device_chart_data(device_pid):
+#Get an average of device sensors readings data by hour between the start and stop date
+#To be used in charts
+@app.route('/devices/<string:device_pid>/data/chart/day', methods=['GET'])
+def get_device_chart_data_day(device_pid):
     try:
-        limit = request.args.get('limit', default=None, type=int)
-        sort = request.args.get('sort', default=None, type=int)
         startDate = request.args.get('startDate', default=None, type=str)
         stopDate = request.args.get('stopDate', default=None, type=str)
 
@@ -1362,38 +1360,35 @@ def get_device_chart_data(device_pid):
         except:
             stopDate = datetime.datetime.now()
 
-        if limit is not None and (sort == 1 or sort == -1):
-            readings = db.sensors_readings.find({"device_pid": device_pid, "timestamp": {"$gte": startDate, "$lte": stopDate}}).sort(
-                [("timestamp", sort)]).limit(limit)
-        elif limit is not None and sort is None:
-            readings = db.sensors_readings.find({"device_pid": device_pid, "timestamp": {"$gte": startDate, "$lte": stopDate}}).limit(limit)
-        elif limit is None and (sort == 1 or sort == -1):
-            readings = db.sensors_readings.find({"device_pid": device_pid, "timestamp": {"$gte": startDate, "$lte": stopDate}}).sort(
-                [("timestamp", sort)])
-        else:
-            readings = db.sensors_readings.find({"device_pid": device_pid, "timestamp": {"$gte": startDate, "$lte": stopDate}})
-
-        readings = parse_json(readings)
+        sensors = parse_json(db.devices.find_one({"pid": device_pid}))["sensors"]
 
         list_readings = {"data" : {}}
-        for reading in readings:
-            if reading["sensor_pid"] in list_readings["data"]:
-                list_readings["data"][reading["sensor_pid"]].append(reading)
-            else:
-                list_readings["data"][reading["sensor_pid"]] = [reading]
+        for sensor in sensors:
+            sensor_readings = parse_json(db.sensors_readings.aggregate([
+                {"$match": {"device_pid": device_pid, "sensor_pid": sensor["pid"],
+                            "timestamp": {"$gte": startDate, "$lte": stopDate}}},
+                {"$group": {
+                    "_id": {
+                        "$dateToString": {"format": "%Y-%m-%d %H:00:00", "date": "$timestamp"}
+                    },
+                    "average": {"$avg": "$value"},
+                    #"hour": {"$first": {"$hour": "$timestamp"}},
+                }},
+                {"$sort": {"_id": 1}}
+            ]))
+
+            if len(sensor_readings) > 0:
+                list_readings["data"][sensor["pid"]] = sensor_readings
 
         return parse_json(list_readings), 200
     except:
         return [], 404
 
-
-#Get all device sensors readings data to use in charts
-#Basically the readings are organized in arrays depending the sensor_pid
-@app.route('/devices/<string:device_pid>/sensors/<string:sensor_pid>/data/chart', methods=['GET'])
-def get_sensor_chart_data(device_pid, sensor_pid):
+#Get an average of device sensors readings data by day between the start and stop date
+#To be used in charts
+@app.route('/devices/<string:device_pid>/data/chart/month', methods=['GET'])
+def get_device_chart_data_month(device_pid):
     try:
-        limit = request.args.get('limit', default=None, type=int)
-        sort = request.args.get('sort', default=None, type=int)
         startDate = request.args.get('startDate', default=None, type=str)
         stopDate = request.args.get('stopDate', default=None, type=str)
 
@@ -1411,26 +1406,76 @@ def get_sensor_chart_data(device_pid, sensor_pid):
         except:
             stopDate = datetime.datetime.now()
 
-        if limit is not None and (sort == 1 or sort == -1):
-            readings = db.sensors_readings.find({"device_pid": device_pid, "sensor_pid": sensor_pid, "timestamp": {"$gte": startDate, "$lte": stopDate}}).sort(
-                [("timestamp", sort)]).limit(limit)
-        elif limit is not None and sort is None:
-            readings = db.sensors_readings.find({"device_pid": device_pid, "sensor_pid": sensor_pid, "timestamp": {"$gte": startDate, "$lte": stopDate}}).limit(limit)
-        elif limit is None and (sort == 1 or sort == -1):
-            readings = db.sensors_readings.find({"device_pid": device_pid, "sensor_pid": sensor_pid, "timestamp": {"$gte": startDate, "$lte": stopDate}}).sort(
-                [("timestamp", sort)])
-        else:
-            readings = db.sensors_readings.find({"device_pid": device_pid, "sensor_pid": sensor_pid, "timestamp": {"$gte": startDate, "$lte": stopDate}})
+        sensors = parse_json(db.devices.find_one({"pid": device_pid}))["sensors"]
 
-        readings = parse_json(readings)
+        list_readings = {"data" : {}}
+        for sensor in sensors:
+            sensor_readings = parse_json(db.sensors_readings.aggregate([
+              {"$match": {"device_pid": device_pid, "sensor_pid": sensor["pid"], "timestamp": {"$gte": startDate, "$lte": stopDate}}},
+              { "$group": {
+                "_id": {
+                    "$dateToString": { "format": "%Y-%m-%d", "date": "$timestamp" }
+                },
+                "average": { "$avg": "$value" },
+                #"day": { "$first": { "$dayOfMonth": "$timestamp" } },
+              }},
+              {"$sort": {"_id": 1}}
+            ]))
 
-        list_readings = {"data" : {sensor_pid: readings}}
+            if len(sensor_readings) > 0:
+                list_readings["data"][sensor["pid"]] = sensor_readings
 
         return parse_json(list_readings), 200
     except:
         return [], 404
 
-#Get an average of device sensors readings data by hour between the start and stop date
+#Get an average of device sensors readings data by month between the start and stop date
+#To be used in charts
+@app.route('/devices/<string:device_pid>/data/chart/year', methods=['GET'])
+def get_device_chart_data_year(device_pid):
+    try:
+        startDate = request.args.get('startDate', default=None, type=str)
+        stopDate = request.args.get('stopDate', default=None, type=str)
+
+        # Se existir o filtro de startDate e estiver corretamente formatado, converte a string para data
+        # Senão devolve os registos que começam em 1900-01-0-1
+        try:
+            startDate = datetime.datetime.fromisoformat(startDate)
+        except:
+            startDate = datetime.datetime.fromisoformat("1900-01-01")
+
+        # Se existir o filtro de stopDate e estiver corretamente formatado, converte a string para data
+        # Senão devolve os registos que terminam na data e hora atual
+        try:
+            stopDate = datetime.datetime.fromisoformat(stopDate)
+        except:
+            stopDate = datetime.datetime.now()
+
+        sensors = parse_json(db.devices.find_one({"pid": device_pid}))["sensors"]
+
+        list_readings = {"data" : {}}
+        for sensor in sensors:
+            sensor_readings = parse_json(db.sensors_readings.aggregate([
+              {"$match": {"device_pid": device_pid, "sensor_pid": sensor["pid"], "timestamp": {"$gte": startDate, "$lte": stopDate}}},
+              { "$group": {
+                "_id": {
+                    "$dateToString": { "format": "%Y-%m", "date": "$timestamp" }
+                },
+                "average": { "$avg": "$value" },
+                #"month": { "$first": { "$month": "$timestamp" } },
+              } },
+                {"$sort": {"_id": 1}}
+            ]))
+
+            if len(sensor_readings) > 0:
+                list_readings["data"][sensor["pid"]] = sensor_readings
+
+        return parse_json(list_readings), 200
+    except:
+        return [], 404
+
+
+#Get an average of sensor readings data by hour between the start and stop date
 #To be used in charts
 @app.route('/devices/<string:device_pid>/sensors/<string:sensor_pid>/data/chart/day', methods=['GET'])
 def get_sensor_chart_data_day(device_pid, sensor_pid):
@@ -1469,7 +1514,7 @@ def get_sensor_chart_data_day(device_pid, sensor_pid):
     except:
         return [], 404
 
-#Get an average of device sensors readings data by day between the start and stop date
+#Get an average of sensor readings data by day between the start and stop date
 #To be used in charts
 @app.route('/devices/<string:device_pid>/sensors/<string:sensor_pid>/data/chart/month', methods=['GET'])
 def get_sensor_chart_data_month(device_pid, sensor_pid):
@@ -1507,7 +1552,7 @@ def get_sensor_chart_data_month(device_pid, sensor_pid):
     except:
         return [], 404
 
-#Get an average of device sensors readings data by month between the start and stop date
+#Get an average of sensor readings data by month between the start and stop date
 #To be used in charts
 @app.route('/devices/<string:device_pid>/sensors/<string:sensor_pid>/data/chart/year', methods=['GET'])
 def get_sensor_chart_data_year(device_pid, sensor_pid):
