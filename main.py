@@ -1462,10 +1462,10 @@ def get_sensor_chart_data_day(device_pid, sensor_pid):
                 "average": {"$avg": "$value"},
                 #"hour": {"$first": {"$hour": "$timestamp"}},
             }},
-            {"$sort": {"timestamp": 1}}
+            {"$sort": {"_id": 1}}
         ])
 
-        return parse_json(readings), 200
+        return jsonify({"data": { sensor_pid: parse_json(readings)}}), 200
     except:
         return [], 404
 
@@ -1493,17 +1493,17 @@ def get_sensor_chart_data_month(device_pid, sensor_pid):
 
         readings = db.sensors_readings.aggregate([
           {"$match": {"device_pid": device_pid, "sensor_pid": sensor_pid, "timestamp": {"$gte": startDate, "$lte": stopDate}}},
-          { "$sort": {"timestamp": 1}},
           { "$group": {
             "_id": {
                 "$dateToString": { "format": "%Y-%m-%d", "date": "$timestamp" }
             },
             "average": { "$avg": "$value" },
             #"day": { "$first": { "$dayOfMonth": "$timestamp" } },
-          } }
+          }},
+          {"$sort": {"_id": 1}}
         ])
 
-        return parse_json(readings), 200
+        return jsonify({"data": { sensor_pid: parse_json(readings)}}), 200
     except:
         return [], 404
 
@@ -1538,10 +1538,10 @@ def get_sensor_chart_data_year(device_pid, sensor_pid):
             "average": { "$avg": "$value" },
             #"month": { "$first": { "$month": "$timestamp" } },
           } },
-            {"$sort": {"timestamp": 1}}
+            {"$sort": {"_id": 1}}
         ])
 
-        return parse_json(readings), 200
+        return jsonify({"data": { sensor_pid: parse_json(readings)}}), 200
     except:
         return [], 404
 
