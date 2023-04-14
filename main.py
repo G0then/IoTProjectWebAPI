@@ -140,9 +140,22 @@ def register_sensor_device(device_pid):
             'unit_name': request.json['unit_name'],
         }
 
-        db.devices.update_one({"pid": device_pid}, {"$push": {"sensors": new_sensor}})
+        #Lista de todos os devices
+        sensorsDevice = parse_json(db.devices.find({}, {"_id": 0, "pid": 1, "sensors": 1}))
 
-        return parse_json(new_sensor), 200
+        #Verifica se o sensorPID já existe
+        sensorNumberDevicesRepetitions = []
+        for device in sensorsDevice:
+            for sensor in device["sensors"]:
+                if sensor["pid"] == request.json['pid']:
+                    sensorNumberDevicesRepetitions.append(device["pid"])
+
+        #Se o sensor pid ainda não existir, deixa criar
+        if len(sensorNumberDevicesRepetitions) == 0:
+            db.devices.update_one({"pid": device_pid}, {"$push": {"sensors": new_sensor}})
+            return parse_json(new_sensor), 200
+        else:
+            return jsonify({"message": "Sensor Pid already in use"}), 400
 
     except:
         return {}, 404
